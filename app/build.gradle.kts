@@ -1,4 +1,3 @@
-import org.gradle.internal.declarativedsl.parsing.main
 
 plugins {
     alias(libs.plugins.android.application)
@@ -53,6 +52,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.documentfile)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

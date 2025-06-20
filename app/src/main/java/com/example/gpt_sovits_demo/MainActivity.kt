@@ -1,11 +1,13 @@
 package com.example.gpt_sovits_demo
 
+import android.content.Intent
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
@@ -41,9 +45,16 @@ class MainActivity : ComponentActivity() {
         t2sEncoderPath: String,
         t2sFsDecoderPath: String,
         t2sSDecoderPath: String,
+        bertPath: String,
         maxLength: Int
     ): Long
-    external fun processReferenceSync(modelHandle: Long, refAudioPath: String, refText: String): Boolean
+
+    external fun processReferenceSync(
+        modelHandle: Long,
+        refAudioPath: String,
+        refText: String
+    ): Boolean
+
     external fun runInferenceSync(modelHandle: Long, text: String): FloatArray?
     external fun freeModel(modelHandle: Long)
 
@@ -51,6 +62,7 @@ class MainActivity : ComponentActivity() {
     private val audioHistory = mutableStateListOf<AudioEntry>()
     private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var modelHandle by mutableStateOf(0L)
+    private var selectedModelFolder by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,11 +77,27 @@ class MainActivity : ComponentActivity() {
                     TextToSpeechScreen(
                         onGenerateClick = { text -> runInferenceAsync(text) },
                         onLoadClick = { loadModelAsync() },
+                        onSelectFolderClick = { folderPickerLauncher.launch(null) },
                         audioHistory = audioHistory,
-                        onReplayClick = { audioPath -> playAudioFromFile(audioPath) }
+                        onReplayClick = { audioPath -> playAudioFromFile(audioPath) },
+                        selectedFolder = selectedModelFolder,
                     )
                 }
             }
+        }
+    }
+
+    private val folderPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let { folderUri ->
+            // Persist permissions for the selected folder
+            contentResolver.takePersistableUriPermission(
+                folderUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            selectedModelFolder = folderUri.toString()
+            Toast.makeText(this, "Model folder selected", Toast.LENGTH_SHORT).show()
+        } ?: run {
+            Toast.makeText(this, "No folder selected", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -80,16 +108,30 @@ class MainActivity : ComponentActivity() {
                 var isLoading by mutableStateOf(true)
                 try {
                     withContext(Dispatchers.IO) {
-                        val modelFiles = copyModelsToCache { progress ->
+                        if (selectedModelFolder == null) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Please select a model folder first",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            return@withContext
+                        }
+                        val modelFiles = getModelsFromFolder(selectedModelFolder!!) { progress ->
                             loadingProgress = progress
                         }
                         if (modelFiles.isEmpty()) {
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(this@MainActivity, "Failed to load models", Toast.LENGTH_LONG).show()
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Failed to load models from folder",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                             return@withContext
                         }
-                        loadingProgress = 0.8f // After copying, 80% done
+                        loadingProgress = 0.8f // After accessing files, 80% done
                         modelHandle = initModel(
                             modelFiles["g2pW"]!!,
                             modelFiles["kaoyu_vits"]!!,
@@ -97,11 +139,16 @@ class MainActivity : ComponentActivity() {
                             modelFiles["kaoyu_t2s_encoder"]!!,
                             modelFiles["kaoyu_t2s_fs_decoder"]!!,
                             modelFiles["kaoyu_t2s_s_decoder"]!!,
+                            modelFiles["kaoyu_bert"]!!,
                             24
                         )
                         if (modelHandle == 0L) {
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(this@MainActivity, "Model initialization failed", Toast.LENGTH_LONG).show()
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Model initialization failed",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                             return@withContext
                         }
@@ -111,7 +158,11 @@ class MainActivity : ComponentActivity() {
                         val refSuccess = processReferenceSync(modelHandle, refAudioPath, refText)
                         if (!refSuccess) {
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(this@MainActivity, "Reference audio processing failed", Toast.LENGTH_LONG).show()
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Reference audio processing failed",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                             freeModel(modelHandle)
                             modelHandle = 0L
@@ -119,17 +170,69 @@ class MainActivity : ComponentActivity() {
                         }
                         loadingProgress = 1.0f // Loading complete
                     }
-                    Toast.makeText(this@MainActivity, "Model loaded successfully", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Model loaded successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 } finally {
                     isLoading = false
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     Log.e("MainActivity", "Error loading model", e)
-                    Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_LONG)
+                        .show()
                 }
             }
         }
+    }
+
+    private fun getModelsFromFolder(folderUriString: String, onProgressUpdate: (Float) -> Unit): Map<String, String> {
+        val modelFiles = mapOf(
+            "g2pW" to "g2pW.onnx",
+            "kaoyu_vits" to "kaoyu_vits.onnx",
+            "kaoyu_ssl" to "kaoyu_ssl.onnx",
+            "kaoyu_t2s_encoder" to "kaoyu_t2s_encoder.onnx",
+            "kaoyu_t2s_fs_decoder" to "kaoyu_t2s_fs_decoder.onnx",
+            "kaoyu_t2s_s_decoder" to "kaoyu_t2s_s_decoder.onnx",
+            "kaoyu_bert" to "kaoyu_bert.onnx",
+            "ref" to "ref.wav"
+        )
+        val outputFiles = mutableMapOf<String, String>()
+        try {
+            val folderUri = folderUriString.toUri()
+            val documentFile = DocumentFile.fromTreeUri(this, folderUri)
+                ?: throw IllegalStateException("Invalid folder URI")
+            val totalFiles = modelFiles.size
+            var filesProcessed = 0
+            for ((key, fileName) in modelFiles) {
+                val file = documentFile.findFile(fileName)
+                if (file == null || !file.exists()) {
+                    Log.e("MainActivity", "Model file $fileName not found in selected folder")
+                    return emptyMap()
+                }
+                val fileUri = file.uri
+                // Copy file to cache to ensure accessibility
+                val cacheFile = File(cacheDir, fileName)
+                contentResolver.openInputStream(fileUri)?.use { input ->
+                    FileOutputStream(cacheFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                if (!cacheFile.exists()) {
+                    Log.e("MainActivity", "Failed to copy $fileName to cache")
+                    return emptyMap()
+                }
+                outputFiles[key] = cacheFile.absolutePath
+                filesProcessed++
+                onProgressUpdate(filesProcessed / totalFiles.toFloat() * 0.8f) // Up to 80% for copying
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error accessing folder: ${e.message}", e)
+            return emptyMap()
+        }
+        return outputFiles
     }
 
     private fun runInferenceAsync(text: String) {
@@ -148,19 +251,28 @@ class MainActivity : ComponentActivity() {
                         withContext(Dispatchers.Main) {
                             val inferenceTime = System.currentTimeMillis() - startTime
                             playAudioFromFile(wavFile.absolutePath)
-                            audioHistory.add(0, AudioEntry(text, wavFile.absolutePath, inferenceTime))
-                            Toast.makeText(this@MainActivity, "Audio generated in ${inferenceTime}ms", Toast.LENGTH_SHORT).show()
+                            audioHistory.add(
+                                0,
+                                AudioEntry(text, wavFile.absolutePath, inferenceTime)
+                            )
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Audio generated in ${inferenceTime}ms",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@MainActivity, "Inference failed", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, "Inference failed", Toast.LENGTH_LONG)
+                                .show()
                         }
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     Log.e("MainActivity", "Error during inference", e)
-                    Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_LONG)
+                        .show()
                 }
             }
         }
@@ -170,14 +282,16 @@ class MainActivity : ComponentActivity() {
     fun TextToSpeechScreen(
         onGenerateClick: (String) -> Unit,
         onLoadClick: () -> Unit,
+        onSelectFolderClick: () -> Unit, // New callback for folder selection
         audioHistory: List<AudioEntry>,
-        onReplayClick: (String) -> Unit
+        onReplayClick: (String) -> Unit,
+        selectedFolder: String?
     ) {
         var textInput by remember { mutableStateOf(TextFieldValue("")) }
         var isProcessing by remember { mutableStateOf(false) }
         var isLoading by remember { mutableStateOf(false) }
         var loadingProgress by remember { mutableStateOf(0f) }
-        val modelLoaded by derivedStateOf { modelHandle != 0L }
+        val modelLoaded by remember { derivedStateOf { modelHandle != 0L } }
 
         LazyColumn(
             modifier = Modifier
@@ -198,6 +312,18 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Button(
+                            onClick = { onSelectFolderClick() },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoading
+                        ) {
+                            Text("Select Model Folder")
+                        }
+                        Text(
+                            text = selectedFolder?.let { "Selected: ${it.toUri().lastPathSegment}" } ?: "No folder selected",
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        Button(
                             onClick = {
                                 if (!isLoading) {
                                     isLoading = true
@@ -205,7 +331,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !isLoading
+                            enabled = !isLoading && selectedFolder != null
                         ) {
                             Text("Load Model")
                         }
@@ -215,10 +341,10 @@ class MainActivity : ComponentActivity() {
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 LinearProgressIndicator(
-                                    progress = loadingProgress,
+                                    progress = { loadingProgress },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 8.dp)
+                                        .padding(vertical = 8.dp),
                                 )
                                 Text(
                                     text = "Loading model: ${(loadingProgress * 100).toInt()}%",
@@ -263,6 +389,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            // [Rest of the Composable remains unchanged]
             item {
                 Text(
                     text = "Demo Texts",
@@ -354,6 +481,7 @@ class MainActivity : ComponentActivity() {
             "kaoyu_t2s_encoder" to "kaoyu_t2s_encoder.onnx",
             "kaoyu_t2s_fs_decoder" to "kaoyu_t2s_fs_decoder.onnx",
             "kaoyu_t2s_s_decoder" to "kaoyu_t2s_s_decoder.onnx",
+            "kaoyu_bert" to "kaoyu_bert.onnx",
             "ref" to "ref.wav"
         )
         val outputFiles = mutableMapOf<String, String>()
@@ -409,7 +537,11 @@ class MainActivity : ComponentActivity() {
                     setOnErrorListener { _, what, extra ->
                         Log.e("MediaPlayer", "Error: what=$what, extra=$extra")
                         coroutineScope.launch {
-                            Toast.makeText(this@MainActivity, "MediaPlayer error: $what, $extra", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this@MainActivity,
+                                "MediaPlayer error: $what, $extra",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                         true
                     }
@@ -433,7 +565,11 @@ class MainActivity : ComponentActivity() {
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error playing audio: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Error playing audio: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Error playing audio: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
