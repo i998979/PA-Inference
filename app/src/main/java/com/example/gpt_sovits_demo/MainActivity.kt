@@ -134,12 +134,12 @@ class MainActivity : ComponentActivity() {
                         loadingProgress = 0.8f // After accessing files, 80% done
                         modelHandle = initModel(
                             modelFiles["g2pW"]!!,
-                            modelFiles["kaoyu_vits"]!!,
-                            modelFiles["kaoyu_ssl"]!!,
-                            modelFiles["kaoyu_t2s_encoder"]!!,
-                            modelFiles["kaoyu_t2s_fs_decoder"]!!,
-                            modelFiles["kaoyu_t2s_s_decoder"]!!,
-                            modelFiles["kaoyu_bert"]!!,
+                            modelFiles["vits"]!!,
+                            modelFiles["ssl"]!!,
+                            modelFiles["t2s_encoder"]!!,
+                            modelFiles["t2s_fs_decoder"]!!,
+                            modelFiles["t2s_s_decoder"]!!,
+                            modelFiles["bert"]!!,
                             24
                         )
                         if (modelHandle == 0L) {
@@ -191,12 +191,12 @@ class MainActivity : ComponentActivity() {
     private fun getModelsFromFolder(folderUriString: String, onProgressUpdate: (Float) -> Unit): Map<String, String> {
         val modelFiles = mapOf(
             "g2pW" to "g2pW.onnx",
-            "kaoyu_vits" to "kaoyu_vits.onnx",
-            "kaoyu_ssl" to "kaoyu_ssl.onnx",
-            "kaoyu_t2s_encoder" to "kaoyu_t2s_encoder.onnx",
-            "kaoyu_t2s_fs_decoder" to "kaoyu_t2s_fs_decoder.onnx",
-            "kaoyu_t2s_s_decoder" to "kaoyu_t2s_s_decoder.onnx",
-            "kaoyu_bert" to "kaoyu_bert.onnx",
+            "vits" to "custom_vits.onnx",
+            "ssl" to "ssl.onnx",
+            "t2s_encoder" to "custom_t2s_encoder.onnx",
+            "t2s_fs_decoder" to "custom_t2s_fs_decoder.onnx",
+            "t2s_s_decoder" to "custom_t2s_s_decoder.onnx",
+            "bert" to "bert.onnx",
             "ref" to "ref.wav"
         )
         val outputFiles = mutableMapOf<String, String>()
@@ -471,48 +471,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun copyModelsToCache(onProgressUpdate: (Float) -> Unit): Map<String, String> {
-        val modelFiles = mapOf(
-            "g2pW" to "g2pW.onnx",
-            "kaoyu_vits" to "kaoyu_vits.onnx",
-            "kaoyu_ssl" to "kaoyu_ssl.onnx",
-            "kaoyu_t2s_encoder" to "kaoyu_t2s_encoder.onnx",
-            "kaoyu_t2s_fs_decoder" to "kaoyu_t2s_fs_decoder.onnx",
-            "kaoyu_t2s_s_decoder" to "kaoyu_t2s_s_decoder.onnx",
-            "kaoyu_bert" to "kaoyu_bert.onnx",
-            "ref" to "ref.wav"
-        )
-        val outputFiles = mutableMapOf<String, String>()
-        try {
-            val totalFiles = modelFiles.size
-            var filesProcessed = 0
-            for ((key, assetName) in modelFiles) {
-                val outputFile = File(cacheDir, assetName)
-                if (!outputFile.exists() || !verifyFileIntegrity(outputFile, assetName)) {
-                    Log.i("MainActivity", "Copying $assetName to cache")
-                    assets.open(assetName).use { input ->
-                        FileOutputStream(outputFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                } else {
-                    Log.i("MainActivity", "Using existing $assetName in cache")
-                }
-                if (!outputFile.exists()) {
-                    Log.e("MainActivity", "Failed to copy or verify $assetName")
-                    return emptyMap()
-                }
-                outputFiles[key] = outputFile.absolutePath
-                filesProcessed++
-                onProgressUpdate(filesProcessed / totalFiles.toFloat() * 0.8f) // Up to 80% for copying
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error copying assets: ${e.message}", e)
-            return emptyMap()
-        }
-        return outputFiles
     }
 
     private fun verifyFileIntegrity(file: File, assetName: String): Boolean {
