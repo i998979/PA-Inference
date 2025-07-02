@@ -40,22 +40,23 @@ class MainActivity : ComponentActivity() {
 
     external fun initModel(
         g2pWPath: String,
+        g2pEnPath: String,
         vitsPath: String,
         sslPath: String,
         t2sEncoderPath: String,
         t2sFsDecoderPath: String,
         t2sSDecoderPath: String,
         bertPath: String,
-        maxLength: Int
     ): Long
 
     external fun processReferenceSync(
         modelHandle: Long,
         refAudioPath: String,
-        refText: String
+        refText: String,
+        langId:Long // 0 if chinese, 1 if yue
     ): Boolean
 
-    external fun runInferenceSync(modelHandle: Long, text: String): FloatArray?
+    external fun runInferenceSync(modelHandle: Long, text: String, langId:Long): FloatArray?
     external fun freeModel(modelHandle: Long)
 
     private lateinit var mediaPlayer: MediaPlayer
@@ -69,19 +70,29 @@ class MainActivity : ComponentActivity() {
         mediaPlayer = MediaPlayer()
 
         setContent {
-            MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    TextToSpeechScreen(
-                        onGenerateClick = { text -> runInferenceAsync(text) },
-                        onLoadClick = { loadModelAsync() },
-                        onSelectFolderClick = { folderPickerLauncher.launch(null) },
-                        audioHistory = audioHistory,
-                        onReplayClick = { audioPath -> playAudioFromFile(audioPath) },
-                        selectedFolder = selectedModelFolder,
-                    )
+            MaterialTheme(
+                colorScheme = MaterialTheme.colorScheme.copy(
+                    primary = MaterialTheme.colorScheme.primaryContainer,
+                    onPrimary = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Scaffold(
+                    topBar = {
+                    }
+                ) { paddingValues ->
+                    Surface(
+                        modifier = Modifier.fillMaxSize().padding(paddingValues),
+                        color = MaterialTheme.colorScheme.background,
+                    ) {
+                        TextToSpeechScreen(
+                            onGenerateClick = { text, langId -> runInferenceAsync(text, langId) },
+                            onLoadClick = { loadModelAsync() },
+                            onSelectFolderClick = { folderPickerLauncher.launch(null) },
+                            audioHistory = audioHistory,
+                            onReplayClick = { audioPath -> playAudioFromFile(audioPath) },
+                            selectedFolder = selectedModelFolder,
+                        )
+                    }
                 }
             }
         }
@@ -134,13 +145,13 @@ class MainActivity : ComponentActivity() {
                         loadingProgress = 0.8f // After accessing files, 80% done
                         modelHandle = initModel(
                             modelFiles["g2pW"]!!,
+                            modelFiles["g2p_en"]!!,
                             modelFiles["vits"]!!,
                             modelFiles["ssl"]!!,
                             modelFiles["t2s_encoder"]!!,
                             modelFiles["t2s_fs_decoder"]!!,
                             modelFiles["t2s_s_decoder"]!!,
                             modelFiles["bert"]!!,
-                            24
                         )
                         if (modelHandle == 0L) {
                             withContext(Dispatchers.Main) {
@@ -153,9 +164,9 @@ class MainActivity : ComponentActivity() {
                             return@withContext
                         }
                         loadingProgress = 0.9f // After init, 90% done
-                        val refAudioPath = modelFiles["ref"]!!
-                        val refText = "格式化，可以给自家的奶带来大量的"
-                        val refSuccess = processReferenceSync(modelHandle, refAudioPath, refText)
+                        val refAudioPath = modelFiles["ref"]!!  // modify this to your own audio
+                        val refText = "格式化，可以给自家的奶带来大量的" // modify this to your own text
+                        val refSuccess = processReferenceSync(modelHandle, refAudioPath, refText, 0)
                         if (!refSuccess) {
                             withContext(Dispatchers.Main) {
                                 Toast.makeText(
@@ -191,6 +202,7 @@ class MainActivity : ComponentActivity() {
     private fun getModelsFromFolder(folderUriString: String, onProgressUpdate: (Float) -> Unit): Map<String, String> {
         val modelFiles = mapOf(
             "g2pW" to "g2pW.onnx",
+            "g2p_en" to "g2p_en",
             "vits" to "custom_vits.onnx",
             "ssl" to "ssl.onnx",
             "t2s_encoder" to "custom_t2s_encoder.onnx",
@@ -207,24 +219,59 @@ class MainActivity : ComponentActivity() {
             val totalFiles = modelFiles.size
             var filesProcessed = 0
             for ((key, fileName) in modelFiles) {
-                val file = documentFile.findFile(fileName)
-                if (file == null || !file.exists()) {
-                    Log.e("MainActivity", "Model file $fileName not found in selected folder")
-                    return emptyMap()
-                }
-                val fileUri = file.uri
-                // Copy file to cache to ensure accessibility
-                val cacheFile = File(cacheDir, fileName)
-                contentResolver.openInputStream(fileUri)?.use { input ->
-                    FileOutputStream(cacheFile).use { output ->
-                        input.copyTo(output)
+                if (fileName.endsWith(".onnx") || fileName.endsWith(".wav")) {
+                    val file = documentFile.findFile(fileName)
+                    if (file == null || !file.exists()) {
+                        Log.e("MainActivity", "Model file $fileName not found in selected folder")
+                        return emptyMap()
                     }
+                    val fileUri = file.uri
+                    // Copy file to cache to ensure accessibility
+                    val cacheFile = File(cacheDir, fileName)
+                    contentResolver.openInputStream(fileUri)?.use { input ->
+                        FileOutputStream(cacheFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    if (!cacheFile.exists()) {
+                        Log.e("MainActivity", "Failed to copy $fileName to cache")
+                        return emptyMap()
+                    }
+                    outputFiles[key] = cacheFile.absolutePath
+                } else { // Handle folder like g2p_en
+                    val folder = documentFile.findFile(fileName)
+                    if (folder == null || !folder.isDirectory) {
+                        Log.e("MainActivity", "Model folder $fileName not found in selected folder")
+                        return emptyMap()
+                    }
+                    val cacheFolder = File(cacheDir, fileName)
+                    if (!cacheFolder.exists()) {
+                        cacheFolder.mkdirs()
+                    }
+                    if (!cacheFolder.exists() && !cacheFolder.mkdirs()) {
+                        Log.e("MainActivity", "Failed to create cache folder $cacheFolder")
+                        return emptyMap()
+                    }
+                    folder.listFiles().forEach { subFile ->
+                        if (subFile.isFile) {
+                            val cacheSubFile = File(cacheFolder, subFile.name!!)
+                            contentResolver.openInputStream(subFile.uri)?.use { input ->
+                                FileOutputStream(cacheSubFile).use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            if (!cacheSubFile.exists()) {
+                                Log.e("MainActivity", "Failed to copy ${subFile.name} to cache")
+                                return emptyMap()
+                            }
+                        }
+                    }
+                    if (!cacheFolder.exists() || cacheFolder.listFiles()?.isEmpty() == true) {
+                        Log.e("MainActivity", "Failed to copy folder $fileName to cache or folder is empty")
+                        return emptyMap()
+                    }
+                    outputFiles[key] = cacheFolder.absolutePath
                 }
-                if (!cacheFile.exists()) {
-                    Log.e("MainActivity", "Failed to copy $fileName to cache")
-                    return emptyMap()
-                }
-                outputFiles[key] = cacheFile.absolutePath
                 filesProcessed++
                 onProgressUpdate(filesProcessed / totalFiles.toFloat() * 0.8f) // Up to 80% for copying
             }
@@ -235,7 +282,7 @@ class MainActivity : ComponentActivity() {
         return outputFiles
     }
 
-    private fun runInferenceAsync(text: String) {
+    private fun runInferenceAsync(text: String, langId: Long) {
         if (modelHandle == 0L) {
             Toast.makeText(this, "Please load model first", Toast.LENGTH_SHORT).show()
             return
@@ -244,7 +291,7 @@ class MainActivity : ComponentActivity() {
             try {
                 val startTime = System.currentTimeMillis()
                 withContext(Dispatchers.IO) {
-                    val samples = runInferenceSync(modelHandle, text)
+                    val samples = runInferenceSync(modelHandle, text,langId )
                     if (samples != null) {
                         val wavFile = File(cacheDir, "output_${UUID.randomUUID()}.wav")
                         writeWavFile(wavFile, WavSpec(32000, 16, 1), samples)
@@ -280,7 +327,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun TextToSpeechScreen(
-        onGenerateClick: (String) -> Unit,
+        onGenerateClick: (String, Long) -> Unit,
         onLoadClick: () -> Unit,
         onSelectFolderClick: () -> Unit, // New callback for folder selection
         audioHistory: List<AudioEntry>,
@@ -292,6 +339,7 @@ class MainActivity : ComponentActivity() {
         var isLoading by remember { mutableStateOf(false) }
         var loadingProgress by remember { mutableStateOf(0f) }
         val modelLoaded by remember { derivedStateOf { modelHandle != 0L } }
+        var isYueyuEnabled by remember { mutableStateOf(false) }
 
         LazyColumn(
             modifier = Modifier
@@ -320,7 +368,10 @@ class MainActivity : ComponentActivity() {
                         }
                         Text(
                             text = selectedFolder?.let { "Selected: ${it.toUri().lastPathSegment}" } ?: "No folder selected",
-                            fontSize = 14.sp,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (selectedFolder != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                         Button(
@@ -352,6 +403,25 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        // add a compose check box to enable Yueyu language
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { isYueyuEnabled = !isYueyuEnabled }
+                                .padding(vertical = 4.dp)
+                        ) {
+                             Checkbox(
+                                checked = isYueyuEnabled,
+                                onCheckedChange = { isYueyuEnabled = it }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "启用粤语",
+                                style = MaterialTheme.typography.bodyMedium                            )
+                        }
+
+
                         OutlinedTextField(
                             value = textInput,
                             onValueChange = { textInput = it },
@@ -363,8 +433,9 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 if (!isProcessing && modelLoaded) {
                                     isProcessing = true
-                                    val text = textInput.text.ifEmpty { "Hello, this is a test." }
-                                    onGenerateClick(text)
+                                    val text = textInput.text.ifEmpty { if (isYueyuEnabled) "你好，哩個係一個測試。" else "你好，这是一个测试。" }
+                                    val langId = if (isYueyuEnabled) 1L else 0L
+                                    onGenerateClick(text, langId)
                                     isProcessing = false
                                 }
                             },
@@ -389,16 +460,18 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            // [Rest of the Composable remains unchanged]
             item {
                 Text(
                     text = "Demo Texts",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
-                DemoCard("你好，欢迎来到小鱼的TTS测试。", onGenerateClick, isProcessing || !modelLoaded)
-                DemoCard("小鱼想成为你的好朋友，而不仅仅是一个可爱的AI助理", onGenerateClick, isProcessing || !modelLoaded)
-                DemoCard("呀！忘了说，希望你能喜欢小鱼！", onGenerateClick, isProcessing || !modelLoaded)
+                DemoCard("你好，欢迎来到小鱼的TTS测试。",0, onGenerateClick, isProcessing || !modelLoaded)
+                DemoCard("小鱼想成为你的好朋友，而不仅仅是一个可爱的AI助理",0, onGenerateClick, isProcessing || !modelLoaded)
+                DemoCard("喂！你好啊！好開心可以同你傾偈啊！",1, onGenerateClick, isProcessing || !modelLoaded)
+                DemoCard("不如我哋一齊去飲茶啦！",1, onGenerateClick, isProcessing || !modelLoaded)
+                DemoCard("CTOS is an operating system from ubisoft games watch dogs",0, onGenerateClick, isProcessing || !modelLoaded)
+                DemoCard("if you want it, then you'll have to take it",0, onGenerateClick, isProcessing || !modelLoaded)
             }
             item {
                 Text(
@@ -418,12 +491,12 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun DemoCard(text: String, onGenerateClick: (String) -> Unit, isDisabled: Boolean) {
+    fun DemoCard(text: String, langId: Long, onGenerateClick: (String, Long) -> Unit, isDisabled: Boolean) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp)
-                .clickable(enabled = !isDisabled) { onGenerateClick(text) },
+                .clickable(enabled = !isDisabled) { onGenerateClick(text, langId) },
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             colors = CardDefaults.cardColors(
                 containerColor = if (isDisabled) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
