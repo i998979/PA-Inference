@@ -1,4 +1,4 @@
-package to.epac.factorycraft.pa_inference;
+package com.example.gpt_sovits_demo;
 
 import android.content.Context;
 import android.media.MediaPlayer;

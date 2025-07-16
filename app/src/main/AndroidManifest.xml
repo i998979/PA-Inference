@@ -11,7 +11,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PAInference">
         <activity
-            android:name="to.epac.factorycraft.pa_inference.MainActivity"
+            android:name="com.example.gpt_sovits_demo.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.PAInference">

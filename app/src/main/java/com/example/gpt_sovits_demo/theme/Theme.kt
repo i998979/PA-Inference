@@ -1,4 +1,4 @@
-package to.epac.factorycraft.pa_inference.theme
+package com.example.gpt_sovits_demo.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

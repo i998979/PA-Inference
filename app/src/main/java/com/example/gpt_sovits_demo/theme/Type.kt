@@ -1,4 +1,4 @@
-package to.epac.factorycraft.pa_inference.theme
+package com.example.gpt_sovits_demo.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
