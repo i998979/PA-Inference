@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="to.epac.factorycraft.pa_inference.MainActivity">
+
+    <TextView
+        android:id="@+id/textView5"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select model folder containing &quot;yue&quot;, &quot;zh&quot;, &quot;en&quot;."
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/selectModel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Model Folder" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingVertical="5dp">
+
+        <TextView
+            android:id="@+id/textView4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Folder selected: "
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/selectedModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="None" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Reference text, only change if you changed ref.wav:"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/refYue"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text"
+        android:text="乘客上落車時，請小心月台與車廂間之空隙，及照顧同行嘅小朋友 " />
+
+    <EditText
+        android:id="@+id/refZh"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text"
+        android:text="乘客上下車的時候，請小心月台與車廂之間的空隙，並照顧同行的小孩 " />
+
+    <EditText
+        android:id="@+id/refEn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text"
+        android:text="For your safety, please mind the platform gap when boarding and alighting, and take extra care of children " />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Inference text:"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/inferenceText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:gravity="start|top"
+        android:inputType="text|textLongMessage|textMultiLine"
+        android:lines="3"
+        android:maxLines="5"
+        android:singleLine="true"
+        android:text="往金鐘列車現在到站" />
+
+    <LinearLayout
+        style="?android:attr/buttonBarStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/cantonese"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:text="Cantonese" />
+
+        <Button
+            android:id="@+id/mandarin"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:text="Mandarin" />
+
+        <Button
+            android:id="@+id/english"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:text="English" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Inference results:"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="16sp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/audioList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentBottom="true"
+        android:clipToPadding="false"
+        android:padding="8dp"
+        android:scrollbars="vertical" />
+
+
+</LinearLayout>
