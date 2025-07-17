@@ -24,8 +24,6 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.pa_inference.R;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -149,9 +147,11 @@ public class MainActivity extends AppCompatActivity {
                             ? runInferenceAsync(inferenceText.getText().toString(), Lang.YUE)
                             : CompletableFuture.completedFuture(false))
                     .whenComplete((result, err) -> {
-                        cantonese.setEnabled(true);
-                        mandarin.setEnabled(true);
-                        english.setEnabled(true);
+                        runOnUiThread(() -> {
+                            cantonese.setEnabled(true);
+                            mandarin.setEnabled(true);
+                            english.setEnabled(true);
+                        });
                     });
         });
         mandarin.setOnClickListener(v -> {
@@ -172,9 +172,11 @@ public class MainActivity extends AppCompatActivity {
                             ? runInferenceAsync(inferenceText.getText().toString(), Lang.ZH)
                             : CompletableFuture.completedFuture(false))
                     .whenComplete((result, err) -> {
-                        cantonese.setEnabled(true);
-                        mandarin.setEnabled(true);
-                        english.setEnabled(true);
+                        runOnUiThread(() -> {
+                            cantonese.setEnabled(true);
+                            mandarin.setEnabled(true);
+                            english.setEnabled(true);
+                        });
                     });
         });
         english.setOnClickListener(v -> {
@@ -195,9 +197,11 @@ public class MainActivity extends AppCompatActivity {
                             ? runInferenceAsync(inferenceText.getText().toString(), Lang.EN)
                             : CompletableFuture.completedFuture(false))
                     .whenComplete((result, err) -> {
-                        cantonese.setEnabled(true);
-                        mandarin.setEnabled(true);
-                        english.setEnabled(true);
+                        runOnUiThread(() -> {
+                            cantonese.setEnabled(true);
+                            mandarin.setEnabled(true);
+                            english.setEnabled(true);
+                        });
                     });
         });
 

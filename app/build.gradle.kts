@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pa_inference"
+    namespace = "com.example.gpt_sovits_demo"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.pa_inference"
+        applicationId = "com.example.gpt_sovits_demo"
         minSdk = 33
         targetSdk = 35
         versionCode = 1

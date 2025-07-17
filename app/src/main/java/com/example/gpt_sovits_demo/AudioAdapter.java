@@ -12,8 +12,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.pa_inference.R;
-
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
