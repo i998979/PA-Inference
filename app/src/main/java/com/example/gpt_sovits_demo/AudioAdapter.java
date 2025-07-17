@@ -1,6 +1,7 @@
 package com.example.gpt_sovits_demo;
 
 import android.content.Context;
+import android.content.Intent;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.view.LayoutInflater;
@@ -10,6 +11,7 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
@@ -28,13 +30,14 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.ViewHolder> 
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView name;
-        Button play, stop, delete;
+        Button play, stop, share, delete;
 
         public ViewHolder(View view) {
             super(view);
             name = view.findViewById(R.id.audioName);
             play = view.findViewById(R.id.playBtn);
             stop = view.findViewById(R.id.stopBtn);
+            share = view.findViewById(R.id.shareBtn);
             delete = view.findViewById(R.id.deleteBtn);
         }
     }
@@ -63,6 +66,18 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.ViewHolder> 
                 mediaPlayer.stop();
                 mediaPlayer.release();
                 mediaPlayer = null;
+            }
+        });
+
+        holder.share.setOnClickListener(v -> {
+            File audioFile = new File(item.filePath);
+            if (audioFile.exists()) {
+                Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", audioFile);
+                Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                shareIntent.setType("audio/*");
+                shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+                shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                context.startActivity(Intent.createChooser(shareIntent, "Share audio via"));
             }
         });
 

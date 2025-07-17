@@ -1,6 +1,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:gravity="center_vertical"
     android:orientation="horizontal"
     android:padding="4dp">
 
@@ -9,8 +10,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="2"
-        android:text="audio.wav"
-        android:textSize="16sp" />
+        android:text="audio.wav" />
 
     <Button
         android:id="@+id/playBtn"
@@ -25,6 +25,13 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="■" />
+
+    <Button
+        android:id="@+id/shareBtn"
+        style="@style/Widget.AppCompat.Button.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="➦" />
 
     <Button
         android:id="@+id/deleteBtn"
