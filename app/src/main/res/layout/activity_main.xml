@@ -56,7 +56,7 @@
         android:layout_height="wrap_content"
         android:ems="10"
         android:inputType="text"
-        android:text="乘客上落車時，請小心月台與車廂間之空隙，及照顧同行嘅小朋友 " />
+        android:text="@string/ref_yue" />
 
     <EditText
         android:id="@+id/refZh"
@@ -64,7 +64,7 @@
         android:layout_height="wrap_content"
         android:ems="10"
         android:inputType="text"
-        android:text="乘客上下車的時候，請小心月台與車廂之間的空隙，並照顧同行的小孩 " />
+        android:text="@string/ref_zh" />
 
     <EditText
         android:id="@+id/refEn"
@@ -72,7 +72,7 @@
         android:layout_height="wrap_content"
         android:ems="10"
         android:inputType="text"
-        android:text="For your safety, please mind the platform gap when boarding and alighting, and take extra care of children " />
+        android:text="@string/ref_en" />
 
     <TextView
         android:id="@+id/textView"
@@ -83,7 +83,7 @@
         android:textSize="16sp" />
 
     <EditText
-        android:id="@+id/inferenceText"
+        android:id="@+id/infer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ems="10"
@@ -92,7 +92,7 @@
         android:lines="3"
         android:maxLines="5"
         android:singleLine="true"
-        android:text="往金鐘列車現在到站" />
+        android:text="@string/infer" />
 
     <LinearLayout
         style="?android:attr/buttonBarStyle"
@@ -141,7 +141,6 @@
         android:id="@+id/audioList"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_alignParentBottom="true"
         android:clipToPadding="false"
         android:padding="8dp"
         android:scrollbars="vertical" />

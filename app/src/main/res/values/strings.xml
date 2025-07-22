@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">PA Inference</string>
+    <string name="ref_yue">乘客上落車時，請小心月台與車廂間之空隙，及照顧同行嘅小朋友</string>
+    <string name="ref_zh">乘客上下車的時候，請小心月台與車廂之間的空隙，並照顧同行的小孩</string>
+    <string name="ref_en">For your safety, please mind the platform gap when boarding and alighting, and take extra care of children</string>
+    <string name="infer">往金鐘列車現在到站</string>
 </resources>

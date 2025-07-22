@@ -2,9 +2,12 @@ package com.example.gpt_sovits_demo;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
@@ -61,8 +64,8 @@ public class MainActivity extends AppCompatActivity {
     private native void freeModel(long modelHandle);
 
 
+    private SharedPreferences pref;
     private MediaPlayer mediaPlayer;
-    // private long modelHandle = 0;
     private Map<Lang, Long> modelHandles;
     private ActivityResultLauncher<Intent> folderPicker;
     private String selectedModelFolder;
@@ -75,18 +78,40 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
+
+        pref = getSharedPreferences("PAInference", MODE_PRIVATE);
         mediaPlayer = new MediaPlayer();
         modelHandles = new HashMap<>(3);
+
+
+        Button cantonese = findViewById(R.id.cantonese);
+        Button mandarin = findViewById(R.id.mandarin);
+        Button english = findViewById(R.id.english);
 
         Button selectModel = findViewById(R.id.selectModel);
         TextView selectedModel = findViewById(R.id.selectedModel);
 
+        selectedModelFolder = pref.getString("selected", null);
+        if (selectedModelFolder != null) {
+            DocumentFile folder = DocumentFile.fromTreeUri(this, Uri.parse(selectedModelFolder));
+
+            if (folder != null && folder.exists() && folder.isDirectory()) {
+                selectedModel.setText(selectedModelFolder);
+
+                cantonese.setEnabled(true);
+                mandarin.setEnabled(true);
+                english.setEnabled(true);
+            } else {
+                selectedModelFolder = null;
+            }
+        }
         selectModel.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
@@ -94,15 +119,44 @@ public class MainActivity extends AppCompatActivity {
             folderPicker.launch(intent);
         });
 
+
         EditText refYue = findViewById(R.id.refYue);
         EditText refZh = findViewById(R.id.refZh);
         EditText refEn = findViewById(R.id.refEn);
+        EditText infer = findViewById(R.id.infer);
 
-        EditText inferenceText = findViewById(R.id.inferenceText);
+        refYue.setText(pref.getString("refYue", getResources().getString(R.string.ref_yue)));
+        refZh.setText(pref.getString("refZh", getResources().getString(R.string.ref_zh)));
+        refEn.setText(pref.getString("refEn", getResources().getString(R.string.ref_en)));
+        infer.setText(pref.getString("infer", getResources().getString(R.string.infer)));
 
-        Button cantonese = findViewById(R.id.cantonese);
-        Button mandarin = findViewById(R.id.mandarin);
-        Button english = findViewById(R.id.english);
+        TextWatcher textWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                EditText current = (EditText) getCurrentFocus();
+                if (current != null) {
+                    int id = current.getId();
+                    if (id == R.id.refYue) pref.edit().putString("refYue", s.toString()).apply();
+                    else if (id == R.id.refZh) pref.edit().putString("refZh", s.toString()).apply();
+                    else if (id == R.id.refEn) pref.edit().putString("refEn", s.toString()).apply();
+                    else if (id == R.id.infer) pref.edit().putString("infer", s.toString()).apply();
+                }
+            }
+        };
+
+        refYue.addTextChangedListener(textWatcher);
+        refZh.addTextChangedListener(textWatcher);
+        refEn.addTextChangedListener(textWatcher);
+        infer.addTextChangedListener(textWatcher);
+
 
         folderPicker = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -113,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
                             getContentResolver().takePersistableUriPermission(folderUri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
 
                             selectedModelFolder = folderUri.toString();
+                            pref.edit().putString("selected", selectedModelFolder).apply();
                             Toast.makeText(this, "Folder selected", Toast.LENGTH_SHORT).show();
                             selectedModel.setText(selectedModelFolder);
 
@@ -144,7 +199,7 @@ public class MainActivity extends AppCompatActivity {
                     : loadModelAsync(refYue.getText().toString(), Lang.YUE);
 
             loadFuture.thenCompose(success -> success
-                            ? runInferenceAsync(inferenceText.getText().toString(), Lang.YUE)
+                            ? runInferenceAsync(infer.getText().toString(), Lang.YUE)
                             : CompletableFuture.completedFuture(false))
                     .whenComplete((result, err) -> {
                         runOnUiThread(() -> {
@@ -169,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
                     : loadModelAsync(refZh.getText().toString(), Lang.ZH);
 
             loadFuture.thenCompose(success -> success
-                            ? runInferenceAsync(inferenceText.getText().toString(), Lang.ZH)
+                            ? runInferenceAsync(infer.getText().toString(), Lang.ZH)
                             : CompletableFuture.completedFuture(false))
                     .whenComplete((result, err) -> {
                         runOnUiThread(() -> {
@@ -194,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
                     : loadModelAsync(refEn.getText().toString(), Lang.EN);
 
             loadFuture.thenCompose(success -> success
-                            ? runInferenceAsync(inferenceText.getText().toString(), Lang.EN)
+                            ? runInferenceAsync(infer.getText().toString(), Lang.EN)
                             : CompletableFuture.completedFuture(false))
                     .whenComplete((result, err) -> {
                         runOnUiThread(() -> {
@@ -204,6 +259,7 @@ public class MainActivity extends AppCompatActivity {
                         });
                     });
         });
+
 
         RecyclerView audioList = findViewById(R.id.audioList);
         audioList.setLayoutManager(new LinearLayoutManager(this));
@@ -225,7 +281,6 @@ public class MainActivity extends AppCompatActivity {
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
             }
         };
-
         new ItemTouchHelper(callback).attachToRecyclerView(audioList);
     }
 
