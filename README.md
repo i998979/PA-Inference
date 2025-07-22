@@ -1,23 +1,23 @@
 # PA Inference
 PA Inference is an Android app that provides a UI for audio inference. By providing trained models and reference audios, audio will be inferred using the sounds of trained model.
 
-With its tri-lingual design, text-to-speech conversion can be easily completed by just providing the text to be converted.
+With its tri-lingual design, text-to-speech conversion can be easily completed by just providing the text to be converted, then click the language to infer.
 
 ### User Interface
 <img src="https://github.com/user-attachments/assets/090c7ff0-338b-431c-9575-50f86d312570" width="200">
 
 # Prerequisites
-- Converted GPT-SoVITS models in .onnx format as described in https://github.com/null-define/gpt-sovits-onnx-rs
-- Reference audio in .wav format
+- Converted GPT-SoVITS v2 models in .onnx format as described in https://github.com/null-define/gpt-sovits-onnx-rs
+- 3-10s reference audio in .wav format
 
 # Installation
-- Download/compile and install the application
+- Download/compile and install the app
 - Create a folder containing the following 3 folders
   - yue
   - zh
   - en
 - Put converted models and required models in the folders accordingly
-- Put reference audio in .wav in the folders accordingly, naming it `ref.wav`
+- Put reference audios in the folders accordingly, naming it `ref.wav`
 
 # Usage
 - Select the root folder containing `yue`, `zh`, and `en`
