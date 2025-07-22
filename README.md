@@ -24,6 +24,8 @@ With its tri-lingual design, text-to-speech conversion can be easily completed b
 - Modify the reference text which matches the ref.wav
 - Enter the text to infer
 - Press the language to infer
+- Model will be loaded and audio will be inferred
+  - If same language is being inferred consecutively, model will only be loaded once to improve performance
 
 Audio will be played and shown in Inference Results. By clicking `➦`, audio can be shared. By clicking `✖`, audio will be deleted.
 
