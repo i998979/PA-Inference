@@ -8,6 +8,7 @@ With its tri-lingual design, text-to-speech conversion can be easily completed b
 
 # Prerequisites
 - Converted GPT-SoVITS v2 models in .onnx format as described in [gpt-sovits-onnx-rs](https://github.com/null-define/gpt-sovits-onnx-rs)
+  - Model is available on [Hugging Face](https://huggingface.co/i998979/PA-Inference/tree/main) (Private)
 - 3-10s reference audio in .wav format
 
 # Installation
