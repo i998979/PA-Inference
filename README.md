@@ -1,7 +1,7 @@
 # PA Inference
 PA Inference is an Android app that provides a UI for audio inference. By project [gpt-sovits-onnx-rs](https://github.com/null-define/gpt-sovits-onnx-rs), inferring on mobile device is made possible. By providing trained models and reference audios, audio will be inferred using the sounds of trained model.
 
-With its tri-lingual design, text-to-speech conversion can be easily completed by just providing the text to be converted, then click the language to infer.
+With its tri-lingual design, text-to-speech conversion can be easily completed by just providing the text to be converted, then clicking the language to infer.
 
 ### User Interface
 <img src="https://github.com/user-attachments/assets/090c7ff0-338b-431c-9575-50f86d312570" width="200">
@@ -9,7 +9,7 @@ With its tri-lingual design, text-to-speech conversion can be easily completed b
 # Prerequisites
 - Converted GPT-SoVITS v2 models in .onnx format as described in [gpt-sovits-onnx-rs](https://github.com/null-define/gpt-sovits-onnx-rs)
   - Model is available on [Hugging Face](https://huggingface.co/i998979/PA-Inference/tree/main) (Private)
-- 3-10s reference audio in .wav format
+- 3-10s reference audio in .wav format (If Hugging Face model is used, reference audio is already bundled, and installation can be skipped)
 
 # Installation
 - Download/compile and install the app
